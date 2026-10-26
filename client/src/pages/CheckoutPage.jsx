@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { apiRequest } from '../utils/api';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -108,19 +109,12 @@ export default function CheckoutPage() {
         })),
       };
 
-      const response = await fetch('/api/orders', {
+      const data = await apiRequest('/api/orders', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify(orderPayload),
       });
 
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        // DO NOT clear cart if checkout fails
+      if (!data.success) {
         throw new Error(data.message || 'Failed to place order. Please review your cart.');
       }
 

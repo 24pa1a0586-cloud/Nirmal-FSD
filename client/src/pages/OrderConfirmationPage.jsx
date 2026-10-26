@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
+import { apiRequest } from '../utils/api';
 
 export default function OrderConfirmationPage() {
   const { id } = useParams();
@@ -16,11 +17,8 @@ export default function OrderConfirmationPage() {
       const fetchOrder = async () => {
         setLoading(true);
         try {
-          const res = await fetch(`/api/orders/${id}`, {
-            credentials: 'include',
-          });
-          const data = await res.json();
-          if (!res.ok || !data.success) {
+          const data = await apiRequest(`/api/orders/${id}`);
+          if (!data.success || !data.order) {
             throw new Error(data.message || 'Order could not be found or you are not authorized.');
           }
           setOrder(data.order);

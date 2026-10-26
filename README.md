@@ -1,218 +1,179 @@
-# ShopEasy — E-Commerce Catalog with Authentication & Fake Store API
+# ShopEasy — Render Deployment & Full-Stack Documentation
 
-> **Full Stack Development Lab Project (MERN Stack)**  
-> A complete, minimal, and responsive college e-commerce web application with **user authentication**, **Fake Store API** product catalog, **persistent shopping cart**, and **MongoDB order history**.
-
----
-
-## 1. Project Overview & Objectives
-
-**ShopEasy** is an academic mini project demonstrating modern full-stack web development:
-- **Product Catalog**: Driven directly by the public [Fake Store API](https://fakestoreapi.com/) for realistic, live e-commerce data across electronics, jewelery, and clothing.
-- **User Authentication**: Secure registration and login using **bcryptjs** password hashing and **JWT** stored in **HttpOnly cookies**.
-- **Shopping Cart**: Client-side state management using React Context API with automatic **`localStorage`** synchronization across refreshes.
-- **MongoDB Order Persistence**: Orders are saved to MongoDB associated with the authenticated user ID, storing snapshots of product titles, prices, and quantities.
-- **Authoritative Server Pricing**: The backend recalculates line items and totals directly against Fake Store API, preventing client-side price tampering.
+> **Production Deployment Guide for Render & MERN Stack**  
+> A complete, responsive e-commerce web application with **user authentication**, **Fake Store API** catalog, **persistent shopping cart**, and **MongoDB Atlas order history**, ready for deployment on **Render**.
 
 ---
 
-## 2. Technologies Used
-
-| Layer | Technology | Purpose |
-| :--- | :--- | :--- |
-| **Frontend UI** | **React 18 (Vite)** | Reactive single-page application with component-driven architecture |
-| **Routing** | **React Router DOM (v6)** | Client-side routing with protected checkout and orders routes |
-| **Styling** | **Tailwind CSS (v3)** | Clean, minimal, student-friendly layout and responsive grid |
-| **Catalog API** | **Fake Store API** | Public REST API providing demonstration products and categories |
-| **Backend Runtime**| **Node.js** | Asynchronous JavaScript runtime environment |
-| **Web Server** | **Express.js (v4)** | Modular REST API routing, request validation, and middleware |
-| **Authentication**| **bcryptjs + JWT** | Salted password hashing (10 rounds) and token verification |
-| **Cookie Parser** | **cookie-parser** | Secure reading of HttpOnly session cookies |
-| **Database** | **MongoDB & Mongoose** | NoSQL document database for user accounts and historical orders |
-
----
-
-## 3. Key Features
-
-### 3.1 Authentication & User Management
-- **Registration (`/register`)**: Captures Full Name, Email, Username, Password, and Password Confirmation. Validates email format, password length (minimum 6 characters), and checks for duplicate emails or usernames in MongoDB.
-- **Login (`/login`)**: Supports logging in via either email address or username. Includes a password visibility toggle ("Show/Hide") and redirects back to the previous page (e.g., checkout) upon success.
-- **HttpOnly Cookies**: Session tokens are stored in secure HttpOnly cookies to protect against XSS token theft.
-- **Navbar Integration**: Dynamically toggles between Login/Register (when logged out) and User Greeting, My Orders, and Logout (when logged in).
-
-### 3.2 Fake Store API Catalog
-- **Home Page (`/`)**: Displays hero banner and trending featured products from Fake Store API (`https://fakestoreapi.com/products?limit=4`).
-- **Catalog Page (`/products`)**:
-  - Live search input filtering across product title and description.
-  - Category selector dynamically loaded from `https://fakestoreapi.com/products/categories`.
-  - Product cards displaying category, title, review rating (`★ 3.9 (120)`), description, price in USD (`$`), and "Add to Cart".
-- **Product Details Page (`/products/:id`)**:
-  - High-resolution product image with fallback support.
-  - Quantity selector (1 to 15).
-  - Handles invalid or missing product IDs with clean 404 messaging.
-
-> **Important Inventory Notice:**  
-> Fake Store API is an external demonstration service. It does not provide real-time inventory management or persistent stock updates. The application acknowledges this limitation: it allows realistic demo quantities (capped at 15 units per product) and does not display misleading live stock counts.
-
-### 3.3 Shopping Cart
-- Persisted in browser **`localStorage`** (`shopeasy_cart`).
-- Supports quantity increment, decrement, and item removal.
-- Prevents duplicate product rows by incrementing quantity.
-- Protected checkout: Unauthenticated visitors clicking "Proceed to Checkout" are redirected to `/login?redirect=/checkout` and returned to checkout immediately upon signing in.
-
-### 3.4 MongoDB Orders & Ownership
-- **Authenticated Checkout (`/checkout`)**: Pre-fills customer details from user session and collects phone and delivery address.
-- **Authoritative Price Calculation**: The Express backend queries `https://fakestoreapi.com/products/:id` to retrieve true prices and computes the order total on the server.
-- **Snapshot Pattern**: Line items preserve the product's title, price, image, and quantity at the time of purchase in MongoDB.
-- **Order History (`/orders`)**: Authenticated users can view their past orders. Middleware ensures users can only access their own orders.
-
----
-
-## 4. REST API Documentation
-
-Base URL: `http://localhost:5000`
-
-### Authentication Endpoints
-
-| Method | Endpoint | Description | Auth Required |
-| :--- | :--- | :--- | :---: |
-| `POST` | `/api/auth/register` | Creates user, hashes password, sets cookie | No |
-| `POST` | `/api/auth/login` | Authenticates email/username & password | No |
-| `POST` | `/api/auth/logout` | Clears HttpOnly session cookie | No |
-| `GET` | `/api/auth/me` | Returns profile of currently signed-in user | **Yes** |
-
-### Order Endpoints
-
-| Method | Endpoint | Description | Auth Required |
-| :--- | :--- | :--- | :---: |
-| `POST` | `/api/orders` | Validates Fake Store IDs & prices, saves order | **Yes** |
-| `GET` | `/api/orders` | Retrieves order history for authenticated user | **Yes** |
-| `GET` | `/api/orders/:id` | Retrieves single order receipt (owner only) | **Yes** |
-
-### Product Endpoints (Local Proxy to Fake Store API)
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/products` | Proxies Fake Store API products with search/category |
-| `GET` | `/api/products/:id` | Proxies single product lookup |
-| `GET` | `/api/categories` | Proxies unique categories |
-
----
-
-## 5. Folder Structure
+## 1. Deployment Architecture on Render
 
 ```text
-Nirmal FSD-II/
-├── client/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Navbar.jsx          # Auth-aware navbar with cart badge
-│   │   │   ├── ProductCard.jsx     # Card with rating, image fallback & USD price
-│   │   │   ├── LoadingSpinner.jsx  # Async loading spinner
-│   │   │   ├── ErrorMessage.jsx    # Error alert box with retry button
-│   │   │   └── Footer.jsx          # Academic project footer
-│   │   ├── context/
-│   │   │   ├── AuthContext.jsx     # JWT session state, login, register, logout
-│   │   │   └── CartContext.jsx     # Cart state with localStorage persistence
-│   │   ├── pages/
-│   │   │   ├── HomePage.jsx        # Landing page with featured items
-│   │   │   ├── ProductsPage.jsx    # Catalog with search & category filter
-│   │   │   ├── ProductDetailsPage.jsx # Details view with quantity picker
-│   │   │   ├── CartPage.jsx        # Shopping cart view & checkout prompt
-│   │   │   ├── LoginPage.jsx       # Email/username login with show-password
-│   │   │   ├── RegisterPage.jsx    # User registration with validation
-│   │   │   ├── CheckoutPage.jsx    # Protected checkout form
-│   │   │   ├── MyOrdersPage.jsx    # Authenticated user order history
-│   │   │   └── OrderConfirmationPage.jsx # Receipt with MongoDB ID
-│   │   ├── App.jsx                 # Route definitions
-│   │   ├── main.jsx                # App wrapper with AuthProvider & CartProvider
-│   │   └── styles.css              # Tailwind base styling
-│   ├── vite.config.js              # Proxy configuration to port 5000
-│   └── package.json
-│
-├── server/
-│   ├── models/
-│   │   ├── User.js                 # User schema with bcrypt password hashing
-│   │   └── Order.js                # Order schema with User reference & snapshots
-│   ├── middleware/
-│   │   └── auth.js                 # JWT verification middleware
-│   ├── routes/
-│   │   ├── authRoutes.js           # Register, login, logout, me routes
-│   │   ├── orderRoutes.js          # Authoritative order creation & lookup
-│   │   └── productRoutes.js        # Fake Store API proxy routes
-│   ├── test-suite.js               # Automated verification test suite
-│   ├── server.js                   # Express app with CORS & cookieParser
-│   ├── .env.example
-│   ├── .env
-│   └── package.json
-│
-├── .gitignore
-├── package.json
-└── README.md
+┌────────────────────────────────────────────────────────┐
+│               RENDER CLOUD PLATFORM                    │
+│                                                        │
+│  ┌────────────────────────┐   ┌─────────────────────┐  │
+│  │  Frontend Static Site  │   │ Backend Web Service │  │
+│  │   (React 18 + Vite)    │   │  (Node.js+Express)  │  │
+│  │  Root Dir: client      │   │  Root Dir: server   │  │
+│  │  Port: 443 (HTTPS)     │   │  Port: $PORT        │  │
+│  └──────────┬─────────────┘   └──────────┬──────────┘  │
+│             │                            │             │
+└─────────────┼────────────────────────────┼─────────────┘
+              │ Fetch API (Bearer / Cookie)│
+              ▼                            ▼
+   ┌────────────────────┐       ┌──────────────────────┐
+   │   Fake Store API   │       │    MongoDB Atlas     │
+   │ (External Catalog) │       │ (Users & Orders DB)  │
+   └────────────────────┘       └──────────────────────┘
 ```
+
+ShopEasy is hosted as two separate services on Render:
+1. **Backend Web Service (`shopeasy-api`)**: Node.js & Express server connected to MongoDB Atlas.
+2. **Frontend Static Site (`shopeasy-client`)**: React Single Page Application (SPA) served from `dist`.
 
 ---
 
-## 6. Installation & How to Run
+## 2. Render Deployment Instructions (Step-by-Step)
 
-### Step 1: Install Dependencies
-From the project root:
+### Option A: Automatic Deployment via Blueprint (`render.yaml`)
+The repository includes a ready-to-use [`render.yaml`](./render.yaml) file:
+1. Push your repository to **GitHub**.
+2. Log in to [Render](https://dashboard.render.com/).
+3. Click **New +** > **Blueprint**.
+4. Connect your GitHub repository.
+5. Render will automatically detect both `shopeasy-api` and `shopeasy-client`.
+6. Enter your `MONGODB_URI` when prompted, and click **Apply**.
+
+---
+
+### Option B: Manual Service Setup on Render
+
+#### Service 1: Backend Web Service
+1. Click **New +** > **Web Service**.
+2. Connect your GitHub repository.
+3. Configure the settings:
+   - **Name**: `shopeasy-api` (or your choice)
+   - **Root Directory**: `server`
+   - **Runtime**: `Node`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Plan**: `Free`
+4. Under **Environment Variables**, add:
+   | Key | Value | Description |
+   | :--- | :--- | :--- |
+   | `NODE_ENV` | `production` | Enables production cookies and strict CORS |
+   | `MONGODB_URI` | `mongodb+srv://<user>:<password>@cluster.mongodb.net/shopeasy?retryWrites=true&w=majority` | Your MongoDB Atlas connection string |
+   | `JWT_SECRET` | `generate-a-random-32-char-string` | Secret key for signing authentication tokens |
+   | `CLIENT_URL` | `https://your-frontend-name.onrender.com` | Allowed frontend origin for CORS and credentials |
+5. Click **Create Web Service**. Note your backend URL (e.g., `https://shopeasy-api.onrender.com`).
+
+#### Service 2: Frontend Static Site
+1. Click **New +** > **Static Site**.
+2. Connect the same GitHub repository.
+3. Configure the settings:
+   - **Name**: `shopeasy-client` (or your choice)
+   - **Root Directory**: `client`
+   - **Build Command**: `npm install && npm run build`
+   - **Publish Directory**: `dist`
+4. Under **Environment Variables**, add:
+   | Key | Value | Description |
+   | :--- | :--- | :--- |
+   | `VITE_API_URL` | `https://shopeasy-api.onrender.com` | Base URL of your deployed backend Web Service |
+5. Click **Create Static Site**.
+6. Once created, copy the Static Site URL (e.g., `https://shopeasy-client.onrender.com`) and update the `CLIENT_URL` environment variable on your Backend Web Service.
+
+---
+
+## 3. Single Page Application (SPA) Routing on Render
+React Router uses client-side routing (`/products`, `/cart`, `/orders`, `/login`, etc.).  
+To prevent `404 Not Found` errors when users refresh or navigate directly to inner routes, this project includes a [`client/public/_redirects`](file:///d:/SAI/Nirmal%20FSD-II/client/public/_redirects) file:
+```text
+/* /index.html 200
+```
+This rule is automatically copied to `client/dist/_redirects` during build and instructs Render to route all incoming HTTP requests to `index.html`.
+
+---
+
+## 4. Cross-Origin Authentication Architecture
+
+When frontend (`*.onrender.com`) and backend (`*.onrender.com`) run on separate origins, modern browsers (Safari ITP, Chrome third-party cookie restrictions) may block cross-origin cookies.
+
+To guarantee 100% reliable authentication across all browsers, ShopEasy implements a **dual-authentication mechanism**:
+1. **HttpOnly Cookie**: The server issues a secure cookie (`SameSite=None; Secure`) upon login or registration.
+2. **Bearer Token Fallback**: The client also stores the signed JWT in local memory and sends it in the `Authorization: Bearer <token>` header on every API request.
+3. **Backend Middleware**: Inspects the `token` cookie first; if blocked or unavailable, it falls back seamlessly to the `Authorization` header.
+
+---
+
+## 5. Catalog Source & Inventory Limitations
+
+- **Catalog Provider**: [Fake Store API](https://fakestoreapi.com/) provides demonstration products across Electronics, Jewelery, Men's Clothing, and Women's Clothing.
+- **Inventory Notice**: Fake Store API is a public demo service and does not support transactional inventory decrementing or persistent product updates.
+- **Academic Simulation**: The application validates product IDs and current prices against Fake Store API during checkout, enforces reasonable ordering limits (up to 15 units per product), and stores historical snapshots in MongoDB without claiming artificial live inventory.
+
+---
+
+## 6. REST API Endpoints
+
+Base URL (Local): `http://localhost:5000`  
+Base URL (Render): `https://your-backend.onrender.com`
+
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `GET` | `/api/health` | Service and database status monitor (returns 200 or 503) | No |
+| `POST` | `/api/auth/register` | User registration with bcrypt password hashing | No |
+| `POST` | `/api/auth/login` | User login (accepts email or username) | No |
+| `POST` | `/api/auth/logout` | Clears authentication session | No |
+| `GET` | `/api/auth/me` | Fetches authenticated user profile | **Yes** |
+| `POST` | `/api/orders` | Creates an order verified with Fake Store API | **Yes** |
+| `GET` | `/api/orders` | Retrieves order history for the authenticated user | **Yes** |
+| `GET` | `/api/orders/:id` | Retrieves single order receipt (owner only) | **Yes** |
+| `GET` | `/api/products` | Proxies Fake Store API products | No |
+| `GET` | `/api/products/:id` | Proxies single product details | No |
+| `GET` | `/api/categories` | Proxies catalog categories | No |
+
+---
+
+## 7. Local Development Setup
+
+### 1. Install Dependencies
 ```bash
-# Server dependencies (bcryptjs, jsonwebtoken, cookie-parser, express, mongoose)
-cd server
-npm install
-
-# Client dependencies (react, react-router-dom, tailwindcss, vite)
-cd ../client
-npm install
+# Root
+npm run install-all
 ```
 
-### Step 2: Configure Environment Variables
-Verify [server/.env](file:///d:/SAI/Nirmal%20FSD-II/server/.env):
-```env
-PORT=5000
-MONGODB_URI=mongodb://127.0.0.1:27017/shopeasy
-JWT_SECRET=shopeasy_development_super_secret_jwt_key_2026
-CLIENT_URL=http://localhost:3000
-```
-*(If using MongoDB Atlas, replace `MONGODB_URI` with your connection string).*
+### 2. Configure Environment Files
+- Server: [server/.env](file:///d:/SAI/Nirmal%20FSD-II/server/.env)
+  ```env
+  PORT=5000
+  NODE_ENV=development
+  MONGODB_URI=mongodb://127.0.0.1:27017/shopeasy
+  JWT_SECRET=shopeasy_development_super_secret_jwt_key_2026
+  CLIENT_URL=http://localhost:3000
+  ```
+- Client: [client/.env](file:///d:/SAI/Nirmal%20FSD-II/client/.env.example) (optional in dev, Vite proxy forwards `/api` to port 5000).
 
-### Step 3: Run the Backend Server
-In terminal 1:
+### 3. Run the Backend Server
 ```bash
 cd server
 npm run dev
 ```
-Server runs on: **`http://localhost:5000`**
 
-### Step 4: Run the Frontend Client
-In terminal 2:
+### 4. Run the Frontend Client
 ```bash
 cd client
 npm run dev
 ```
-Client runs on: **`http://localhost:3000`**
+Navigate to: `http://localhost:3000`
 
-### Step 5: Run Automated Tests
-In terminal:
+### 5. Run Verification Test Suite
 ```bash
 cd server
 npm test
 ```
-All 19 automated verification tests will execute, checking password hashing, JWT generation, order ownership, and Fake Store API live connectivity.
+Executes all 24 automated unit and integration tests.
 
 ---
 
-## 7. Lab Evaluation Viva Guide
-
-1. **Q: Why are passwords hashed with bcrypt instead of stored plain-text?**  
-   *A:* Hashing with a cryptographic salt (10 rounds) ensures that even if the database is compromised, passwords cannot be reversed or cracked via rainbow tables.
-
-2. **Q: Why use HttpOnly cookies for JWT?**  
-   *A:* Storing JWT tokens in `localStorage` exposes them to Cross-Site Scripting (XSS) attacks. `HttpOnly` cookies are inaccessible to client-side JavaScript, protecting the session token from theft.
-
-3. **Q: Why does the backend query Fake Store API during checkout?**  
-   *A:* Never trust client-submitted prices. A malicious user could edit the network payload in dev tools to send `price: 0.01`. The backend fetches the authoritative price from `https://fakestoreapi.com/products/:id` and computes line totals on the server.
-
-4. **Q: What is the purpose of storing snapshots in the Order model?**  
-   *A:* Even though products come from an external catalog, storing a snapshot of the title, price, and image in MongoDB guarantees that historical receipts remain unchanged.
+## 8. License
+Distributed under the MIT License. Developed for the Full Stack Development Lab examination.

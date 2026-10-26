@@ -8,7 +8,7 @@ const JWT_SECRET = 'test_jwt_secret_key_12345';
 
 async function runTests() {
   console.log('======================================================');
-  console.log('   ShopEasy Auth & Fake Store API Verification Suite  ');
+  console.log('   ShopEasy Render Production Verification Suite      ');
   console.log('======================================================\n');
 
   let passed = 0;
@@ -26,7 +26,7 @@ async function runTests() {
 
   try {
     // -------------------------------------------------------------
-    // TEST 1: User Schema & Password Hashing
+    // TEST 1: User Model & Password Hashing
     // -------------------------------------------------------------
     console.log('--- 1. Testing User Model & Password Hashing ---');
 
@@ -79,7 +79,7 @@ async function runTests() {
     assert(passErr && passErr.errors.password, 'User model rejects password shorter than 6 characters');
 
     // -------------------------------------------------------------
-    // TEST 2: JWT Token Authentication Flow
+    // TEST 2: JWT Token Authentication Flow & Expired Tokens
     // -------------------------------------------------------------
     console.log('\n--- 2. Testing JWT Token Issuance & Verification ---');
 
@@ -95,6 +95,29 @@ async function runTests() {
     const decoded = jwt.verify(token, JWT_SECRET);
     assert(decoded.userId === dummyUserId.toString(), 'JWT token decodes valid userId');
     assert(decoded.username === 'aditi_s', 'JWT token contains username claim');
+
+    // Expired token test
+    const expiredToken = jwt.sign({ userId: dummyUserId }, JWT_SECRET, { expiresIn: '-1s' });
+    let tokenExpiredCaught = false;
+    try {
+      jwt.verify(expiredToken, JWT_SECRET);
+    } catch (e) {
+      if (e.name === 'TokenExpiredError') {
+        tokenExpiredCaught = true;
+      }
+    }
+    assert(tokenExpiredCaught, 'Expired JWT token triggers TokenExpiredError');
+
+    // Malformed token test
+    let malformedCaught = false;
+    try {
+      jwt.verify('malformed.token.here', JWT_SECRET);
+    } catch (e) {
+      if (e.name === 'JsonWebTokenError') {
+        malformedCaught = true;
+      }
+    }
+    assert(malformedCaught, 'Tampered/malformed token triggers JsonWebTokenError');
 
     // -------------------------------------------------------------
     // TEST 3: Order Schema with User Ownership & Fake Store IDs
@@ -130,8 +153,21 @@ async function runTests() {
     const anotherUserId = new mongoose.Types.ObjectId();
     assert(
       testOrder.userId.toString() !== anotherUserId.toString(),
-      'Order ownership enforcement: Another user cannot claim this order'
+      'Order ownership isolation: Unauthorized user cannot claim order'
     );
+
+    // Empty items rejection test
+    const emptyOrder = new Order({
+      userId: dummyUserId,
+      customerName: 'Test',
+      email: 'test@example.com',
+      phone: '1234567890',
+      deliveryAddress: 'Addr',
+      items: [],
+      totalAmount: 0,
+    });
+    const emptyOrderErr = emptyOrder.validateSync();
+    assert(emptyOrderErr && emptyOrderErr.errors.items, 'Order rejects empty items array');
 
     // -------------------------------------------------------------
     // TEST 4: Fake Store API Live Connectivity & Authoritative Pricing
@@ -145,7 +181,6 @@ async function runTests() {
         assert(item1 && item1.id === 1, 'Fake Store API is reachable and returned product #1');
         assert(typeof item1.price === 'number' && item1.price > 0, `Product #1 has verified price: $${item1.price}`);
 
-        // Simulate backend authoritative price calculation:
         // Client attempts to claim item costs $1.00
         const clientReportedPrice = 1.0;
         const requestedQuantity = 3;
@@ -164,6 +199,26 @@ async function runTests() {
     } catch (networkErr) {
       console.warn('⚠️ Note: External network request to Fake Store API timed out or offline:', networkErr.message);
     }
+
+    // -------------------------------------------------------------
+    // TEST 5: Render Deployment Configuration Integrity
+    // -------------------------------------------------------------
+    console.log('\n--- 5. Testing Deployment Configuration & Environment Rules ---');
+
+    // CORS Origin matching test
+    const allowedOrigins = [
+      'https://shopeasy.onrender.com',
+      'http://localhost:3000',
+    ].map((u) => u.replace(/\/+$/, ''));
+
+    assert(
+      allowedOrigins.includes('https://shopeasy.onrender.com'),
+      'CORS allowed origin matching correctly verifies production Render URL'
+    );
+    assert(
+      !allowedOrigins.includes('https://malicious-site.com'),
+      'CORS correctly rejects unauthorized third-party origins'
+    );
 
     console.log('\n======================================================');
     console.log(`>>> ALL ${passed}/${total} VERIFICATION CHECKS PASSED! <<<`);

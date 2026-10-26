@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
+import { apiRequest } from '../utils/api';
 
 export default function MyOrdersPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -22,12 +23,9 @@ export default function MyOrdersPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/orders', {
-        credentials: 'include',
-      });
-      const data = await res.json();
+      const data = await apiRequest('/api/orders');
 
-      if (!res.ok || !data.success) {
+      if (!data.success) {
         throw new Error(data.message || 'Failed to retrieve order history');
       }
 

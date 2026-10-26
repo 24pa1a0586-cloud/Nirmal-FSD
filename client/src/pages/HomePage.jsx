@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
+import { getApiUrl } from '../utils/api';
 
 const FAKE_STORE_URL = 'https://fakestoreapi.com/products?limit=4';
 
@@ -20,7 +21,7 @@ export default function HomePage() {
 
       // Fallback: If external direct fetch fails, try backend proxy
       if (!res.ok) {
-        res = await fetch('/api/products?limit=4');
+        res = await fetch(getApiUrl('/api/products?limit=4'));
       }
 
       if (!res.ok) {

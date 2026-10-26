@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
+import { getApiUrl } from '../utils/api';
 
 const FAKE_STORE_BASE = 'https://fakestoreapi.com';
 
@@ -26,7 +27,7 @@ export default function ProductDetailsPage() {
 
       // Fallback: local backend proxy
       if (!res.ok) {
-        res = await fetch(`/api/products/${id}`);
+        res = await fetch(getApiUrl(`/api/products/${id}`));
       }
 
       if (!res.ok) {

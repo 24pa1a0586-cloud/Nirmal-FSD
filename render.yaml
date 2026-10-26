@@ -1,0 +1,46 @@
+services:
+  # -------------------------------------------------------------
+  # 1. Backend Express Web Service on Render
+  # -------------------------------------------------------------
+  - type: web
+    name: shopeasy-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        fromService:
+          type: web
+          name: shopeasy-client
+          property: url
+
+  # -------------------------------------------------------------
+  # 2. Frontend React (Vite) Static Site on Render
+  # -------------------------------------------------------------
+  - type: web
+    name: shopeasy-client
+    runtime: static
+    rootDir: client
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    plan: free
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: shopeasy-api
+          property: url

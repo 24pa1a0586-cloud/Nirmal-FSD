@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ProductCard from '../components/ProductCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
+import { getApiUrl } from '../utils/api';
 
 const FAKE_STORE_BASE = 'https://fakestoreapi.com';
 
@@ -18,7 +19,7 @@ export default function ProductsPage() {
     try {
       let res = await fetch(`${FAKE_STORE_BASE}/products/categories`);
       if (!res.ok) {
-        res = await fetch('/api/categories');
+        res = await fetch(getApiUrl('/api/categories'));
       }
       if (res.ok) {
         const data = await res.json();
@@ -45,7 +46,7 @@ export default function ProductsPage() {
       // Fallback to server proxy if external direct request fails
       if (!res.ok) {
         const query = selectedCategory !== 'All' ? `?category=${encodeURIComponent(selectedCategory)}` : '';
-        res = await fetch(`/api/products${query}`);
+        res = await fetch(getApiUrl(`/api/products${query}`));
       }
 
       if (!res.ok) {

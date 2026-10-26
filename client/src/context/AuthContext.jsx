@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { apiRequest, setStoredToken, removeStoredToken, getStoredToken } from '../utils/api';
 
 const AuthContext = createContext();
 
@@ -7,30 +8,23 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
 
-  // Check current session from /api/auth/me on app mount
+  // Check current session on app mount
   const checkAuth = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/auth/me', {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.user) {
-          setUser(data.user);
-        } else {
-          setUser(null);
-        }
+      const data = await apiRequest('/api/auth/me');
+      if (data.success && data.user) {
+        setUser(data.user);
       } else {
         setUser(null);
+        removeStoredToken();
       }
     } catch (err) {
-      console.error('Session verification error:', err);
+      // If 401 Unauthorized or network error, session is unauthenticated
       setUser(null);
+      if (err.status === 401) {
+        removeStoredToken();
+      }
     } finally {
       setLoading(false);
     }
@@ -44,19 +38,18 @@ export function AuthProvider({ children }) {
   const login = async (emailOrUsername, password) => {
     setAuthError(null);
     try {
-      const res = await fetch('/api/auth/login', {
+      const data = await apiRequest('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ emailOrUsername, password }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Login failed. Please check your credentials.');
+      if (!data.success) {
+        throw new Error(data.message || 'Login failed.');
       }
 
+      if (data.token) {
+        setStoredToken(data.token);
+      }
       setUser(data.user);
       return { success: true, user: data.user };
     } catch (err) {
@@ -69,19 +62,18 @@ export function AuthProvider({ children }) {
   const register = async (userData) => {
     setAuthError(null);
     try {
-      const res = await fetch('/api/auth/register', {
+      const data = await apiRequest('/api/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(userData),
       });
 
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Registration failed. Please check the form.');
+      if (!data.success) {
+        throw new Error(data.message || 'Registration failed.');
       }
 
+      if (data.token) {
+        setStoredToken(data.token);
+      }
       setUser(data.user);
       return { success: true, user: data.user };
     } catch (err) {
@@ -93,13 +85,11 @@ export function AuthProvider({ children }) {
   // Logout handler
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await apiRequest('/api/auth/logout', { method: 'POST' });
     } catch (err) {
-      console.error('Logout error:', err);
+      console.warn('Logout API error:', err.message);
     } finally {
+      removeStoredToken();
       setUser(null);
     }
   };
