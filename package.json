@@ -1,0 +1,23 @@
+{
+  "name": "shopeasy-ecommerce-catalog",
+  "version": "1.0.0",
+  "description": "E-Commerce Catalog with Shopping Cart built with MERN Stack (React, Express, Node.js, MongoDB)",
+  "scripts": {
+    "install-all": "npm install && npm install --prefix server && npm install --prefix client",
+    "server": "npm run dev --prefix server",
+    "client": "npm run dev --prefix client",
+    "seed": "npm run seed --prefix server",
+    "build": "npm run build --prefix client"
+  },
+  "keywords": [
+    "react",
+    "express",
+    "mongodb",
+    "nodejs",
+    "mern",
+    "ecommerce",
+    "shopping-cart"
+  ],
+  "author": "Full Stack Development Student",
+  "license": "MIT"
+}
