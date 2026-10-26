@@ -25,7 +25,7 @@ const fetchFakeStoreProduct = async (productId) => {
 };
 
 // POST /api/orders - Create an order with Fake Store API authoritative prices and User ownership
-router.post('/orders', requireAuth, async (req, res) => {
+router.post(['/', '/orders'], requireAuth, async (req, res) => {
   try {
     const { customerName, email, phone, deliveryAddress, items } = req.body;
     const userId = req.user._id;
@@ -133,7 +133,7 @@ router.post('/orders', requireAuth, async (req, res) => {
 });
 
 // GET /api/orders - Retrieve all orders for the currently authenticated user
-router.get('/orders', requireAuth, async (req, res) => {
+router.get(['/', '/orders'], requireAuth, async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.user._id }).sort({ createdAt: -1 });
     res.json({
@@ -152,7 +152,7 @@ router.get('/orders', requireAuth, async (req, res) => {
 });
 
 // GET /api/orders/:id - Retrieve order details by ID (with authorization check)
-router.get('/orders/:id', requireAuth, async (req, res) => {
+router.get(['/:id', '/orders/:id'], requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
 

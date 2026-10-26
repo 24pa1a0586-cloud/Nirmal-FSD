@@ -15,13 +15,19 @@ const createToken = (user) => {
   );
 };
 
-const getCookieOptions = () => ({
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  path: '/',
-});
+const getCookieOptions = (req) => {
+  const isHttps =
+    process.env.NODE_ENV === 'production' ||
+    Boolean(req && (req.secure || req.headers?.['x-forwarded-proto'] === 'https'));
+
+  return {
+    httpOnly: true,
+    secure: isHttps,
+    sameSite: isHttps ? 'none' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    path: '/',
+  };
+};
 
 // POST /api/auth/register - Register a new user
 router.post('/register', async (req, res) => {
@@ -99,7 +105,7 @@ router.post('/register', async (req, res) => {
     const token = createToken(savedUser);
 
     // Set HttpOnly cookie
-    res.cookie('token', token, getCookieOptions());
+    res.cookie('token', token, getCookieOptions(req));
 
     res.status(201).json({
       success: true,
@@ -161,7 +167,7 @@ router.post('/login', async (req, res) => {
     const token = createToken(user);
 
     // Set HttpOnly cookie
-    res.cookie('token', token, getCookieOptions());
+    res.cookie('token', token, getCookieOptions(req));
 
     res.json({
       success: true,
@@ -181,12 +187,7 @@ router.post('/login', async (req, res) => {
 
 // POST /api/auth/logout - Clear session cookie
 router.post('/logout', (req, res) => {
-  res.clearCookie('token', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    path: '/',
-  });
+  res.clearCookie('token', getCookieOptions(req));
 
   res.json({
     success: true,

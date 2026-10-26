@@ -3,7 +3,7 @@ services:
   # 1. Backend Express Web Service on Render
   # -------------------------------------------------------------
   - type: web
-    name: shopeasy-api
+    name: fsd-t5ll
     runtime: node
     rootDir: server
     buildCommand: npm install
@@ -19,16 +19,13 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CLIENT_URL
-        fromService:
-          type: web
-          name: shopeasy-client
-          property: url
+        value: https://shopeasy-fsd.onrender.com
 
   # -------------------------------------------------------------
   # 2. Frontend React (Vite) Static Site on Render
   # -------------------------------------------------------------
   - type: web
-    name: shopeasy-client
+    name: shopeasy-fsd
     runtime: static
     rootDir: client
     buildCommand: npm install && npm run build
@@ -40,7 +37,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: shopeasy-api
-          property: url
+        value: https://fsd-t5ll.onrender.com

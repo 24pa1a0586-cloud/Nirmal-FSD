@@ -1,8 +1,10 @@
+const http = require('http');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('./models/User');
 const Order = require('./models/Order');
+const { app } = require('./server');
 
 const JWT_SECRET = 'test_jwt_secret_key_12345';
 
@@ -23,6 +25,12 @@ async function runTests() {
     console.log(`✓ PASS: ${message}`);
     passed++;
   }
+
+  // Helper to run ephemeral server tests
+  const testServer = http.createServer(app);
+  await new Promise((resolve) => testServer.listen(0, resolve));
+  const serverPort = testServer.address().port;
+  const baseUrl = `http://127.0.0.1:${serverPort}`;
 
   try {
     // -------------------------------------------------------------
@@ -54,11 +62,9 @@ async function runTests() {
     const isWrongMatch = await validUser.comparePassword('wrong_password');
     assert(isWrongMatch === false, 'comparePassword correctly rejects wrong password');
 
-    // Test toJSON exclusion
     const jsonUser = validUser.toJSON();
     assert(jsonUser.password === undefined, 'toJSON excludes password from serialization');
 
-    // Test invalid email
     const invalidEmailUser = new User({
       name: 'Test',
       email: 'invalid-email-address',
@@ -68,7 +74,6 @@ async function runTests() {
     const emailErr = invalidEmailUser.validateSync();
     assert(emailErr && emailErr.errors.email, 'User model rejects malformed email address');
 
-    // Test short password
     const shortPassUser = new User({
       name: 'Test',
       email: 'valid@example.com',
@@ -96,7 +101,6 @@ async function runTests() {
     assert(decoded.userId === dummyUserId.toString(), 'JWT token decodes valid userId');
     assert(decoded.username === 'aditi_s', 'JWT token contains username claim');
 
-    // Expired token test
     const expiredToken = jwt.sign({ userId: dummyUserId }, JWT_SECRET, { expiresIn: '-1s' });
     let tokenExpiredCaught = false;
     try {
@@ -108,7 +112,6 @@ async function runTests() {
     }
     assert(tokenExpiredCaught, 'Expired JWT token triggers TokenExpiredError');
 
-    // Malformed token test
     let malformedCaught = false;
     try {
       jwt.verify('malformed.token.here', JWT_SECRET);
@@ -132,7 +135,7 @@ async function runTests() {
       deliveryAddress: 'Flat 402, Bengaluru, Karnataka',
       items: [
         {
-          productId: '1', // Fake Store API numeric ID as string
+          productId: '1',
           title: 'Fjallraven - Foldsack No. 1 Backpack, Fits 15 Laptops',
           price: 109.95,
           image: 'https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg',
@@ -149,14 +152,12 @@ async function runTests() {
     assert(testOrder.items[0].productId === '1', 'Order stores Fake Store product ID');
     assert(testOrder.items[0].price === 109.95, 'Order stores product snapshot price');
 
-    // Authorization isolation test
     const anotherUserId = new mongoose.Types.ObjectId();
     assert(
       testOrder.userId.toString() !== anotherUserId.toString(),
       'Order ownership isolation: Unauthorized user cannot claim order'
     );
 
-    // Empty items rejection test
     const emptyOrder = new Order({
       userId: dummyUserId,
       customerName: 'Test',
@@ -181,11 +182,9 @@ async function runTests() {
         assert(item1 && item1.id === 1, 'Fake Store API is reachable and returned product #1');
         assert(typeof item1.price === 'number' && item1.price > 0, `Product #1 has verified price: $${item1.price}`);
 
-        // Client attempts to claim item costs $1.00
         const clientReportedPrice = 1.0;
         const requestedQuantity = 3;
 
-        // Server ignores client price, uses item1.price
         const authoritativePrice = item1.price;
         const serverTotal = Math.round(authoritativePrice * requestedQuantity * 100) / 100;
 
@@ -201,24 +200,82 @@ async function runTests() {
     }
 
     // -------------------------------------------------------------
-    // TEST 5: Render Deployment Configuration Integrity
+    // TEST 5: Live Express HTTP Server, CORS Preflight & Health Check
     // -------------------------------------------------------------
-    console.log('\n--- 5. Testing Deployment Configuration & Environment Rules ---');
+    console.log('\n--- 5. Testing Live Express HTTP, Preflight CORS & Endpoints ---');
 
-    // CORS Origin matching test
-    const allowedOrigins = [
-      'https://shopeasy.onrender.com',
-      'http://localhost:3000',
-    ].map((u) => u.replace(/\/+$/, ''));
+    // 5.1 Health check endpoint
+    const healthRes = await fetch(`${baseUrl}/api/health`);
+    const healthJson = await healthRes.json();
+    assert(healthJson.server === 'online', 'GET /api/health reports server is online');
+    assert(healthJson.status !== undefined, 'GET /api/health contains valid status report');
 
+    // 5.2 CORS Preflight OPTIONS request from Render frontend
+    const preflightRes = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'OPTIONS',
+      headers: {
+        'Origin': 'https://shopeasy-fsd.onrender.com',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'Content-Type, Authorization',
+      },
+    });
+
+    assert(preflightRes.status === 204, `OPTIONS preflight returned status 204 (got ${preflightRes.status})`);
     assert(
-      allowedOrigins.includes('https://shopeasy.onrender.com'),
-      'CORS allowed origin matching correctly verifies production Render URL'
+      preflightRes.headers.get('access-control-allow-origin') === 'https://shopeasy-fsd.onrender.com',
+      'CORS preflight sets exact Access-Control-Allow-Origin: https://shopeasy-fsd.onrender.com'
     );
     assert(
-      !allowedOrigins.includes('https://malicious-site.com'),
-      'CORS correctly rejects unauthorized third-party origins'
+      preflightRes.headers.get('access-control-allow-credentials') === 'true',
+      'CORS preflight sets Access-Control-Allow-Credentials: true'
     );
+
+    // 5.3 CORS Preflight for /api/auth/me
+    const mePreflight = await fetch(`${baseUrl}/api/auth/me`, {
+      method: 'OPTIONS',
+      headers: {
+        'Origin': 'https://shopeasy-fsd.onrender.com',
+        'Access-Control-Request-Method': 'GET',
+        'Access-Control-Request-Headers': 'Authorization',
+      },
+    });
+    assert(
+      mePreflight.headers.get('access-control-allow-origin') === 'https://shopeasy-fsd.onrender.com',
+      'OPTIONS /api/auth/me returns valid Access-Control-Allow-Origin'
+    );
+
+    // 5.4 Unauthorized origin rejection
+    const badOriginRes = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'OPTIONS',
+      headers: {
+        'Origin': 'https://malicious-site.com',
+        'Access-Control-Request-Method': 'POST',
+      },
+    });
+    assert(
+      badOriginRes.headers.get('access-control-allow-origin') === null,
+      'CORS correctly omits Access-Control-Allow-Origin for unauthorized origin'
+    );
+
+    // 5.5 Unauthenticated /api/auth/me returns JSON 401
+    // (Note: in test environment without MongoDB connection, requireDatabase returns 503 or requireAuth returns 401)
+    const unauthRes = await fetch(`${baseUrl}/api/auth/me`, {
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+    assert(
+      unauthRes.status === 401 || unauthRes.status === 503,
+      `Unauthenticated /api/auth/me returns proper JSON error status (${unauthRes.status})`
+    );
+    const unauthJson = await unauthRes.json();
+    assert(unauthJson.success === false, 'Unauthenticated response returns success: false JSON');
+
+    // 5.6 404 handler returns clean JSON
+    const notFoundRes = await fetch(`${baseUrl}/api/non-existent-endpoint`);
+    assert(notFoundRes.status === 404, 'Unknown /api/* route returns 404');
+    const notFoundJson = await notFoundRes.json();
+    assert(notFoundJson.success === false && notFoundJson.message.includes('not found'), 'Unknown route returns JSON 404 payload');
 
     console.log('\n======================================================');
     console.log(`>>> ALL ${passed}/${total} VERIFICATION CHECKS PASSED! <<<`);
@@ -226,6 +283,8 @@ async function runTests() {
   } catch (err) {
     console.error('❌ Test failed:', err);
     process.exitCode = 1;
+  } finally {
+    testServer.close();
   }
 }
 

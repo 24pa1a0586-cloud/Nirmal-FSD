@@ -4,7 +4,15 @@
  * and Authorization header fallback for cross-origin deployments on Render.
  */
 
-const RAW_API_URL = (import.meta.env.VITE_API_URL || '').trim();
+// Production deployed backend URL on Render
+const DEPLOYED_BACKEND_URL = 'https://fsd-t5ll.onrender.com';
+
+// Use environment variable if set, otherwise default to deployed backend in production
+const RAW_API_URL = (
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? DEPLOYED_BACKEND_URL : '')
+).trim();
+
 const TOKEN_KEY = 'shopeasy_token';
 
 // Normalize base URL without trailing slash or duplicate /api
@@ -107,7 +115,7 @@ export async function apiRequest(endpoint, options = {}) {
     if (error.status) throw error;
 
     // Network / DNS / CORS connection error
-    console.error(`API request error on ${endpoint}:`, error);
+    console.error(`API request error on ${url}:`, error.message);
     const networkError = new Error(
       error.message || 'Unable to connect to the backend server. Please verify network connectivity.'
     );
